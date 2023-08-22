@@ -91,6 +91,6 @@ fn main() {
             }
         }
 
-        println!("");
+        println!("\n");
     }
 }

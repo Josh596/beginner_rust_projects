@@ -70,8 +70,8 @@ impl Board {
                 // println!("Row: {:?}, Col: {:?}", row, col);
                 let value = match self.cells[i][j] {
                     Some(val) => match val.to_string().to_ascii_lowercase().as_str() {
-                        "x" => "x".to_ascii_uppercase().cyan(),
-                        "o" => "o".to_ascii_uppercase().yellow(),
+                        "x" => "X".red(),
+                        "o" => "O".blue(),
                         others => others.white(),
                     },
                     None => {
@@ -94,7 +94,7 @@ impl Board {
             for col in row {
                 if let None = col {
                     total += 1;
-                }
+                } 
             }
         }
         total
@@ -136,68 +136,70 @@ impl Board {
         }
     }
 
+    fn check_rows(&self) -> Option<Player> {
+        for row in &self.cells {
+            if let Some(player) = self.check_equal_cells(row.iter()) {
+                return Some(player);
+            }
+        }
+
+        None
+    }
+
+    fn check_columns(&self) -> Option<Player> {
+        for col in 0..BOARD_SIZE {
+            let column = self.cells.iter().map(|row| &row[col]);
+            if let Some(player) = self.check_equal_cells(column) {
+                return Some(player);
+            }
+        }
+        None
+    }
+
+    fn check_diagonals(&self) -> Option<Player> {
+        let primary_diagonal = (0..BOARD_SIZE).map(|i| &self.cells[i][i]);
+        let secondary_diagonal = (0..BOARD_SIZE).map(|i| &self.cells[i][BOARD_SIZE - 1 - i]);
+
+        if let Some(player) = self.check_equal_cells(primary_diagonal) {
+            return Some(player);
+        }
+
+        if let Some(player) = self.check_equal_cells(secondary_diagonal) {
+            return Some(player);
+        }
+
+        None
+    }
+
+    fn check_equal_cells<'a, I>(&self, cells: I) -> Option<Player>
+    where
+        I: Iterator<Item = &'a Option<char>>,
+    {
+        let values: Vec<&Option<char>> = cells.collect();
+        let first_value = values[0];
+
+        if values.iter().all(|&v| v == first_value && v.is_some()) {
+            return Player::get_player_enum_from_char(first_value.unwrap());
+        }
+
+        None
+    }
 
     fn game_winner(&self) -> Option<Player> {
-        let mut winner: Option<Player> = None;
-
         // Check rows
-        for row in self.cells {
-            if row.iter().all(|&x| x == row[0]) {
-                if let Some(winner_char) = row[0] {
-                    winner = Player::get_player_enum_from_char(winner_char);
-                }
-            }
+        if let Some(player) = self.check_rows() {
+            return Some(player);
         }
 
-        // Check cols
-        for j in 0..self.cells.len() {
-            let mut equal = true;
-            let value = self.cells[0][j];
-            for i in 0..self.cells.len() {
-                if value != self.cells[i][j] {
-                    equal = false;
-                    break;
-                }
-            }
-
-            if equal {
-                if let Some(winner_char) = value {
-                    winner = Player::get_player_enum_from_char(winner_char);
-                }
-            }
+        if let Some(player) = self.check_columns() {
+            return Some(player);
         }
 
-        // Check two diagonals
-        // Check primary diagonals
-        let mut primary_diagonal_equal = true;
-        for i in 0..self.cells.len() {
-            if self.cells[i][i] != self.cells[0][0] {
-                primary_diagonal_equal = false;
-                break;
-            }
-        }
-        if primary_diagonal_equal {
-            if let Some(c) = self.cells[0][0] {
-                winner = Player::get_player_enum_from_char(c);
-            }
+        if let Some(player) = self.check_diagonals() {
+            return Some(player);
         }
 
-        // Check secondary diagonal
-        let mut secondary_diaginal_equal = true;
-
-        for i in 0..self.cells.len() {
-            if self.cells[i][self.cells.len() - 1 - i] != self.cells[0][self.cells.len() - 1] {
-                secondary_diaginal_equal = false;
-            }
-        }
-
-        if secondary_diaginal_equal {
-            if let Some(c) = self.cells[0][self.cells.len() - 1] {
-                winner = Player::get_player_enum_from_char(c);
-            }
-        }
-
-        winner
+        None
     }
 
     pub fn make_move(&mut self, player_move: Move) -> Result<BoardState, &'static str> {
@@ -233,5 +235,68 @@ impl Board {
         } else {
             return Err("Invalid move.");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_board_initialization() {
+        let board = Board::new();
+
+        // Check Board is correct size
+        assert_eq!(board.cells.len(), BOARD_SIZE);
+        assert_eq!(board.cells[0].len(), BOARD_SIZE)
+    }
+
+    #[test]
+    fn test_slot_empty() {
+        let board = Board::new();
+
+        for position in 1..=BOARD_SIZE.pow(2) {
+            assert!(
+                board.is_slot_empty(position),
+                "Position {} was not empty",
+                position
+            );
+        }
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_number_of_open_slots() {
+        let mut board = Board::new();
+
+        assert_eq!(board.get_number_of_open_slots(), BOARD_SIZE.pow(2));
+
+        let player_move = Move {
+            position: 1,
+            player: Player::O,
+        };
+        board.make_move(player_move);
+        assert_eq!(board.get_number_of_open_slots(), BOARD_SIZE.pow(2) - 1, "Open Slots {} != {}", board.get_number_of_open_slots(), BOARD_SIZE.pow(2) - 1);
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_check_invalid_move() {
+        let mut board = Board::new();
+
+        const POSITION: u32 = 1;
+        const PLAYER: Player = Player::O;
+        let player_move = Move {
+            position: POSITION,
+            player: PLAYER,
+        };
+        board.make_move(player_move);
+
+        let player_move = Move {
+            position: POSITION,
+            player: PLAYER,
+        };
+
+        assert!(!board.check_valid_move(&player_move));
     }
 }
