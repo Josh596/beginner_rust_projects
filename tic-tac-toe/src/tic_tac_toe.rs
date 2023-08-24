@@ -94,7 +94,7 @@ impl Board {
             for col in row {
                 if let None = col {
                     total += 1;
-                } 
+                }
             }
         }
         total
@@ -276,7 +276,13 @@ mod tests {
             player: Player::O,
         };
         board.make_move(player_move);
-        assert_eq!(board.get_number_of_open_slots(), BOARD_SIZE.pow(2) - 1, "Open Slots {} != {}", board.get_number_of_open_slots(), BOARD_SIZE.pow(2) - 1);
+        assert_eq!(
+            board.get_number_of_open_slots(),
+            BOARD_SIZE.pow(2) - 1,
+            "Open Slots {} != {}",
+            board.get_number_of_open_slots(),
+            BOARD_SIZE.pow(2) - 1
+        );
     }
 
     #[test]
@@ -299,4 +305,134 @@ mod tests {
 
         assert!(!board.check_valid_move(&player_move));
     }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_get_next_player() {
+        let mut board = Board::new();
+
+        const POSITION: u32 = 1;
+        const PLAYER: Player = Player::O;
+        let player_move = Move {
+            position: POSITION,
+            player: PLAYER,
+        };
+        board.make_move(player_move);
+
+        let next_player = board.get_next_player();
+
+        assert_ne!(next_player, PLAYER);
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_check_rows() {
+        let mut board = Board::new();
+
+        for i in 1..=BOARD_SIZE {
+
+            let player_o_move = Move {
+                position: i as u32,
+                player: Player::O
+            };
+            board.make_move(player_o_move);
+            let player_x_move = Move {
+                position: (i+BOARD_SIZE) as u32,
+                player: Player::X,
+            };
+            board.make_move(player_x_move);
+        }
+        board.display();
+        assert!(board.check_rows().is_some())
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_check_col() {
+        let mut board = Board::new();
+
+        for i in 1..=BOARD_SIZE {
+
+            let player_o_move = Move {
+                position: (BOARD_SIZE*i - BOARD_SIZE + 1) as u32,
+                player: Player::O
+            };
+            board.make_move(player_o_move);
+            let player_x_move = Move {
+                position: (BOARD_SIZE*i - BOARD_SIZE + 2) as u32,
+                player: Player::X,
+            };
+            board.make_move(player_x_move);
+        }
+        board.display();
+        assert!(board.check_columns().is_some())
+    }
+
+    
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_check_primary_diagonals() {
+        // Check Primary Diagon
+        let mut board = Board::new();
+
+        for i in 1..=BOARD_SIZE {
+            let player_o_move = Move {
+                position: (BOARD_SIZE*i - (BOARD_SIZE -i)) as u32,
+                player: Player::O
+            };
+            board.make_move(player_o_move);
+            let player_x_move = Move {
+                position: (i+1) as u32,
+                player: Player::X,
+            };
+            board.make_move(player_x_move);
+        }
+        board.display();
+        assert!(board.check_diagonals().is_some())
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_check_secondary_diagonals() {
+        // Check Primary Diagon
+        let mut board = Board::new();
+
+        for i in 1..=BOARD_SIZE {
+            let player_o_move = Move {
+                position: (BOARD_SIZE*i - (i-1)) as u32,
+                player: Player::O
+            };
+            board.make_move(player_o_move);
+            let player_x_move = Move {
+                position: (i.pow(2)) as u32,
+                player: Player::X,
+            };
+            board.make_move(player_x_move);
+        }
+        board.display();
+        assert!(board.check_diagonals().is_some())
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn test_game_winner() {
+        // Check Primary Diagon
+        let mut board = Board::new();
+
+        for i in 1..=BOARD_SIZE {
+            let player_o_move = Move {
+                position: (BOARD_SIZE*i - (i-1)) as u32,
+                player: Player::O
+            };
+            board.make_move(player_o_move);
+            let player_x_move = Move {
+                position: (i.pow(2)) as u32,
+                player: Player::X,
+            };
+            board.make_move(player_x_move);
+        }
+        board.display();
+        assert_eq!(board.game_winner(), Some(Player::O));
+    }
+
 }
