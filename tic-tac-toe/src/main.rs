@@ -91,6 +91,77 @@ fn ask_for_move_position(player: &Player) -> Result<usize, &'static str> {
 }
 
 
+fn play_turn(board: &mut Board, game_mode:&GameMode) -> bool {
+    println!("Current board: ");
+    board.display();
+    let player = board.get_next_player();
+    let player_move: Move;
+    let position: usize;
+
+    match game_mode {
+        GameMode::AgainstComputer(computer_player, brain) if player == *computer_player => {
+            // Computer player's turn
+            player_move = match brain.make_move(&board) {
+                Ok(player_move) => player_move,
+                Err(err) => {
+                    print_error(&err);
+                    return false;
+                }
+            };
+        }
+        _ => {
+            // Human player's turn
+            position = match ask_for_move_position(&player) {
+                Ok(num) if num > 0 && num <= BOARD_SIZE.pow(2) as usize => num,
+                _ => {
+                    print_error("Invalid Position selected");
+                    return false;
+                }
+            };
+
+            player_move = match Move::create(position, player) {
+                Ok(player_move) => player_move,
+                Err(err) => {
+                    print_error(err.as_str());
+                    return false;
+                }
+            };
+        }
+    }
+
+    match board.make_move(player_move) {
+        Err(msg) => {
+            print_error(format!("An error occurred while making your move.\n{}", msg).as_str());
+            return false;
+        }
+        Ok(state) => {
+            match state {
+                BoardState::Ended(player) => {
+                    match player {
+                        Some(winner) => {
+                            println!(
+                                "{} {} {}",
+                                "Player".green(),
+                                Player::get_player_char_from_enum(&winner)
+                                    .to_string()
+                                    .green(),
+                                "won the game!!".green()
+                            );
+                            board.display();
+                        }
+                        None => println!("Tie Game!"),
+                    }
+                    println!("------------------------------------------------------------");
+                    return true;
+                }
+                _ => return false,
+            }
+        }
+    }
+
+
+}
+
 
 fn main() {
     println!("Tic Tac Toe game");
@@ -119,112 +190,8 @@ fn main() {
     }
 
     while !game_ended {
-        println!("Current board: ");
-        board.display();
-
-        let player = board.get_next_player();
-
-        let player_move:Move;
-        let position: usize;
-        match &game_mode {
-            GameMode::AgainstComputer(computer_player, brain) => {
-                if player == *computer_player {
-                    player_move = match brain.make_move(&board) {
-                        Ok(player_move) => player_move,
-                        Err(err) => {
-                            print_error(&err);
-                            continue;
-                        }
-                    };
-                } else {
-                    position = match ask_for_move_position(&player) {
-                        Ok(num) => {
-                            if num > 0 && num <= BOARD_SIZE.pow(2) as usize {
-                                num
-                            } else {
-                                {
-                                    print_error("Invalid Position selected");
-                                    continue;
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            print_error(err);
-                            continue;
-                        }
-                    };
-    
-                    player_move = match Move::create(position, player) {
-                        Ok(player_move) => player_move,
-                        Err(err) => {
-                            print_error(err.as_str());
-                            continue;
-                        }
-                    };
-                }
-                
-            }
-            GameMode::AgainstHuman => {
-                position = match ask_for_move_position(&player) {
-                    Ok(num) => {
-                        if num > 0 && num <= BOARD_SIZE.pow(2) as usize {
-                            num
-                        } else {
-                            {
-                                print_error("Invalid Position selected");
-                                continue;
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        print_error(err);
-                        continue;
-                    }
-                };
-
-                player_move = match Move::create(position, player) {
-                    Ok(player_move) => player_move,
-                    Err(err) => {
-                        print_error(err.as_str());
-                        continue;
-                    }
-                };
-            }
-        }
         
 
-
-        match board.make_move(player_move) {
-            Err(msg) => {
-                print_error(format!("An error occured while making your move.\n{}", msg).as_str());
-            }
-            Ok(state) => {
-                board.display();
-                match state {
-                    BoardState::Ended(player) => {
-                        match player {
-                            Some(winner) => {
-                                println!(
-                                    "{} {} {}",
-                                    "Player".green(),
-                                    Player::get_player_char_from_enum(&winner)
-                                        .to_string()
-                                        .green(),
-                                    "won the game!!".green()
-                                );
-                                board.display();
-                            }
-                            None => println!("Tie Game!"),
-                        }
-                        println!("------------------------------------------------------------");
-
-                        game_ended = true;
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        println!("\n");
+        game_ended = play_turn(&mut board, &game_mode);
     }
 }

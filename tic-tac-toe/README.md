@@ -6,7 +6,8 @@ This is a simple implementation of the classic Tic Tac Toe game in Rust. The gam
 
 ## Features
 
-- Play against a friend in two-player mode.
+- Two-player mode (Human vs. Human)
+- Option to play against a computer with adjustable difficulty levels
 - Display the game board in the terminal.
 - Follows standard Tic Tac Toe rules for winning and tying conditions.
 - Supports both 'X' and 'O' players.
