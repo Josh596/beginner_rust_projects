@@ -15,6 +15,7 @@ pub const BOARD_SIZE: usize = 3;
 #[derive(Debug)]
 pub struct Board {
     cells: [[Option<char>; BOARD_SIZE]; BOARD_SIZE],
+    player_1: Player,
 }
 
 /// Represents the possible states of the Tic Tac Toe game.
@@ -28,7 +29,7 @@ pub enum BoardState {
 }
 /// Represents a player in the Tic Tac Toe game.
 /// Players can be 'X' or 'O'.
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub enum Player {
     O,
     X,
@@ -45,7 +46,7 @@ impl Player {
     /// Converts a character to a player enum.
     /// Returns `Some(Player)` for 'X' or 'O', and `None` for other characters.
     pub fn get_player_enum_from_char(c: char) -> Option<Player> {
-        match c {
+        match c.to_ascii_uppercase() {
             'O' => Some(Player::O),
             'X' => Some(Player::X),
             _ => None,
@@ -55,7 +56,7 @@ impl Player {
 /// Represents a move made by a player.
 pub struct Move {
     /// The position on the board where the move is made (1 to 9).
-    position: u32,
+    position: usize,
     /// The player making the move.
     player: Player,
 }
@@ -63,23 +64,25 @@ pub struct Move {
 impl Move {
     /// Creates a new move instance.
     /// Returns an error if the position is outside the valid range, i.e 1-9.
-    pub fn new(position: u32, player: Player) -> Result<Self, &'static str> {
+    pub fn create(position: usize, player: Player) -> Result<Self, String> {
         if position > 0 && position <= 9 {
             Ok(Move {
                 position: position,
                 player: player,
             })
         } else {
-            Err("Invalid position. Position should be in the range 0 < position <= 9")
+            let error_message = format!("Invalid position {}. Position should be in the range 0 < position <= 9", position);
+            Err(error_message)
         }
     }
 }
 
 impl Board {
     /// Creates a new instance of the Tic Tac Toe game board.
-    pub fn new() -> Self {
+    pub fn new(player_1:Player) -> Self {
         Board {
             cells: [[None; BOARD_SIZE]; BOARD_SIZE],
+            player_1: player_1
         }
     }
 
@@ -137,7 +140,7 @@ impl Board {
     ///
     /// - `true` if the specified slot is empty.
     /// - `false` if the specified slot is occupied.
-    fn is_slot_empty(&self, position: usize) -> bool {
+    pub fn is_slot_empty(&self, position: usize) -> bool {
         let mut empty = true;
         for (i, row) in self.cells.iter().enumerate() {
             for (j, num) in row.iter().enumerate() {
@@ -189,10 +192,22 @@ impl Board {
     /// - `Player::X` if the number of open slots is even.
     /// - `Player::O` if the number of open slots is odd.
     pub fn get_next_player(&self) -> Player {
+        let player_1: Player;
+        let player_2: Player;
+        match self.player_1 {
+            Player::O => {
+                player_1 = Player::O;
+                player_2 = Player::X;
+            }
+            Player::X => {
+                player_1 = Player::X;
+                player_2 = Player::O;
+            }
+        }
         if (self.get_number_of_open_slots() % 2) == 0 {
-            Player::X
+            player_2
         } else {
-            Player::O
+            player_1
         }
     }
 
@@ -326,10 +341,10 @@ impl Board {
     /// - `Ok(BoardState::Ongoing)` if the game continues after the move.
     /// - `Err("Game has already ended")` if the game has already been won or tied.
     /// - `Err("Invalid move.")` if the move is not valid.
-    pub fn make_move(&mut self, player_move: Move) -> Result<BoardState, &'static str> {
+    pub fn make_move(&mut self, player_move: Move) -> Result<BoardState, String> {
         // Check that game has not ended.
         if self.game_winner().is_some() {
-            return Err("Game has already ended");
+            return Err("Game has already ended".to_string());
         }
         // Check valid move
         if self.check_valid_move(&player_move) {
@@ -341,7 +356,8 @@ impl Board {
                         if let None = num {
                             *num = Some(Player::get_player_char_from_enum(&player_move.player));
                         } else {
-                            return Err("Invalid Move");
+                            let error_message = format!("Invalid Move: {:}", player_move.position);
+                            return Err(error_message);
                         }
                     }
                 }
@@ -357,7 +373,7 @@ impl Board {
                 return Ok(BoardState::Ongoing);
             }
         } else {
-            return Err("Invalid move.");
+            return Err("Invalid move.".to_string());
         }
     }
 }
@@ -368,7 +384,8 @@ mod tests {
 
     #[test]
     fn test_new_board_initialization() {
-        let board = Board::new();
+        let player_1 = Player::X;
+        let board = Board::new(player_1);
 
         // Check Board is correct size
         assert_eq!(board.cells.len(), BOARD_SIZE);
@@ -377,7 +394,8 @@ mod tests {
 
     #[test]
     fn test_slot_empty() {
-        let board = Board::new();
+        let player_1 = Player::X;
+        let board = Board::new(player_1);
 
         for position in 1..=BOARD_SIZE.pow(2) {
             assert!(
@@ -391,13 +409,14 @@ mod tests {
     #[test]
     #[allow(unused_must_use)]
     fn test_number_of_open_slots() {
-        let mut board = Board::new();
+        let player_1 = Player::X;
+        let mut board = Board::new(player_1);
 
         assert_eq!(board.get_number_of_open_slots(), BOARD_SIZE.pow(2));
 
         let player_move = Move {
             position: 1,
-            player: Player::O,
+            player: board.get_next_player(),
         };
         board.make_move(player_move);
         assert_eq!(
@@ -412,19 +431,20 @@ mod tests {
     #[test]
     #[allow(unused_must_use)]
     fn test_check_invalid_move() {
-        let mut board = Board::new();
+        let player_1 = Player::X;
+        let mut board = Board::new(player_1);
 
-        const POSITION: u32 = 1;
-        const PLAYER: Player = Player::O;
+        const POSITION: usize = 1;
+        let player_2 = board.get_next_player();
         let player_move = Move {
             position: POSITION,
-            player: PLAYER,
+            player: player_2,
         };
         board.make_move(player_move);
 
         let player_move = Move {
             position: POSITION,
-            player: PLAYER,
+            player: player_2,
         };
 
         assert!(!board.check_valid_move(&player_move));
@@ -433,34 +453,36 @@ mod tests {
     #[test]
     #[allow(unused_must_use)]
     fn test_get_next_player() {
-        let mut board = Board::new();
+        let player_1 = Player::X;
+        let mut board = Board::new(player_1);
 
-        const POSITION: u32 = 1;
-        const PLAYER: Player = Player::O;
+        const POSITION: usize = 1;
+        let player_2 = board.get_next_player();
         let player_move = Move {
             position: POSITION,
-            player: PLAYER,
+            player: player_2,
         };
         board.make_move(player_move);
 
         let next_player = board.get_next_player();
 
-        assert_ne!(next_player, PLAYER);
+        assert_ne!(next_player, player_1);
     }
 
     #[test]
     #[allow(unused_must_use)]
     fn test_check_rows() {
-        let mut board = Board::new();
+        let player_1 = Player::X;
+        let mut board = Board::new(player_1);
 
         for i in 1..=BOARD_SIZE {
             let player_o_move = Move {
-                position: i as u32,
+                position: i as usize,
                 player: Player::O,
             };
             board.make_move(player_o_move);
             let player_x_move = Move {
-                position: (i + BOARD_SIZE) as u32,
+                position: (i + BOARD_SIZE) as usize,
                 player: Player::X,
             };
             board.make_move(player_x_move);
@@ -472,16 +494,17 @@ mod tests {
     #[test]
     #[allow(unused_must_use)]
     fn test_check_col() {
-        let mut board = Board::new();
+        let player_1 = Player::X;
+        let mut board = Board::new(player_1);
 
         for i in 1..=BOARD_SIZE {
             let player_o_move = Move {
-                position: (BOARD_SIZE * i - BOARD_SIZE + 1) as u32,
+                position: (BOARD_SIZE * i - BOARD_SIZE + 1) as usize,
                 player: Player::O,
             };
             board.make_move(player_o_move);
             let player_x_move = Move {
-                position: (BOARD_SIZE * i - BOARD_SIZE + 2) as u32,
+                position: (BOARD_SIZE * i - BOARD_SIZE + 2) as usize,
                 player: Player::X,
             };
             board.make_move(player_x_move);
@@ -494,16 +517,17 @@ mod tests {
     #[allow(unused_must_use)]
     fn test_check_primary_diagonals() {
         // Check Primary Diagon
-        let mut board = Board::new();
+        let player_1 = Player::O;
+        let mut board = Board::new(player_1);
 
         for i in 1..=BOARD_SIZE {
             let player_o_move = Move {
-                position: (BOARD_SIZE * i - (BOARD_SIZE - i)) as u32,
+                position: (BOARD_SIZE * i - (BOARD_SIZE - i)) as usize,
                 player: Player::O,
             };
             board.make_move(player_o_move);
             let player_x_move = Move {
-                position: (i + 1) as u32,
+                position: (i + 1) as usize,
                 player: Player::X,
             };
             board.make_move(player_x_move);
@@ -516,16 +540,17 @@ mod tests {
     #[allow(unused_must_use)]
     fn test_check_secondary_diagonals() {
         // Check Primary Diagon
-        let mut board = Board::new();
+        let player_1 = Player::O;
+        let mut board = Board::new(player_1);
 
         for i in 1..=BOARD_SIZE {
             let player_o_move = Move {
-                position: (BOARD_SIZE * i - (i - 1)) as u32,
+                position: (BOARD_SIZE * i - (i - 1)) as usize,
                 player: Player::O,
             };
             board.make_move(player_o_move);
             let player_x_move = Move {
-                position: (i.pow(2)) as u32,
+                position: (i.pow(2)) as usize,
                 player: Player::X,
             };
             board.make_move(player_x_move);
@@ -538,16 +563,17 @@ mod tests {
     #[allow(unused_must_use)]
     fn test_game_winner() {
         // Check Primary Diagon
-        let mut board = Board::new();
+        let player_1 = Player::O;
+        let mut board = Board::new(player_1);
 
         for i in 1..=BOARD_SIZE {
             let player_o_move = Move {
-                position: (BOARD_SIZE * i - (i - 1)) as u32,
+                position: (BOARD_SIZE * i - (i - 1)) as usize,
                 player: Player::O,
             };
             board.make_move(player_o_move);
             let player_x_move = Move {
-                position: (i.pow(2)) as u32,
+                position: (i.pow(2)) as usize,
                 player: Player::X,
             };
             board.make_move(player_x_move);
@@ -559,19 +585,20 @@ mod tests {
     #[test]
     #[allow(unused_must_use)]
     fn test_game_tied() {
-        let mut board = Board::new();
+        let player_1 = Player::O;
+        let mut board = Board::new(player_1);
 
         // Make moves to fill the entire board without any player winning
         let moves: Vec<Move> = vec![
-            Move::new(1, Player::O).unwrap(),
-            Move::new(2, Player::X).unwrap(),
-            Move::new(3, Player::O).unwrap(),
-            Move::new(4, Player::X).unwrap(),
-            Move::new(6, Player::O).unwrap(),
-            Move::new(5, Player::X).unwrap(),
-            Move::new(8, Player::O).unwrap(),
-            Move::new(9, Player::X).unwrap(),
-            Move::new(7, Player::O).unwrap(),
+            Move::create(1, Player::O).unwrap(),
+            Move::create(2, Player::X).unwrap(),
+            Move::create(3, Player::O).unwrap(),
+            Move::create(4, Player::X).unwrap(),
+            Move::create(6, Player::O).unwrap(),
+            Move::create(5, Player::X).unwrap(),
+            Move::create(8, Player::O).unwrap(),
+            Move::create(9, Player::X).unwrap(),
+            Move::create(7, Player::O).unwrap(),
         ];
 
         for player_move in moves {
