@@ -66,12 +66,12 @@ impl Move {
     /// Returns an error if the position is outside the valid range, i.e 1-9.
     pub fn create(position: usize, player: Player) -> Result<Self, String> {
         if position > 0 && position <= 9 {
-            Ok(Move {
-                position: position,
-                player: player,
-            })
+            Ok(Move { position, player })
         } else {
-            let error_message = format!("Invalid position {}. Position should be in the range 0 < position <= 9", position);
+            let error_message = format!(
+                "Invalid position {}. Position should be in the range 0 < position <= 9",
+                position
+            );
             Err(error_message)
         }
     }
@@ -79,10 +79,10 @@ impl Move {
 
 impl Board {
     /// Creates a new instance of the Tic Tac Toe game board.
-    pub fn new(player_1:Player) -> Self {
+    pub fn new(player_1: Player) -> Self {
         Board {
             cells: [[None; BOARD_SIZE]; BOARD_SIZE],
-            player_1: player_1
+            player_1,
         }
     }
 
@@ -120,7 +120,7 @@ impl Board {
 
         for row in self.cells {
             for col in row {
-                if let None = col {
+                if col.is_none() {
                     total += 1;
                 }
             }
@@ -144,10 +144,9 @@ impl Board {
         let mut empty = true;
         for (i, row) in self.cells.iter().enumerate() {
             for (j, num) in row.iter().enumerate() {
-                if (i * BOARD_SIZE) + j + 1 == position {
-                    if let Some(_) = num {
+                if (i * BOARD_SIZE) + j + 1 == position && num.is_some() {
                         empty = false;
-                    }
+                    
                 }
             }
         }
@@ -168,14 +167,14 @@ impl Board {
     /// # Returns
     ///
     /// - `true` if the move is valid.
-    /// - `false` if the move is invalid. 
+    /// - `false` if the move is invalid.
     fn check_valid_move(&self, player_move: &Move) -> bool {
         let mut valid_move = true;
         if player_move.player != self.get_next_player() {
             valid_move = false;
         }
 
-        if !self.is_slot_empty(player_move.position as usize) {
+        if !self.is_slot_empty(player_move.position) {
             valid_move = false;
         }
 
@@ -352,8 +351,8 @@ impl Board {
 
             for (i, row) in self.cells.iter_mut().enumerate() {
                 for (j, num) in row.iter_mut().enumerate() {
-                    if (i * BOARD_SIZE) + j + 1 == player_move.position as usize {
-                        if let None = num {
+                    if (i * BOARD_SIZE) + j + 1 == player_move.position {
+                        if num.is_none() {
                             *num = Some(Player::get_player_char_from_enum(&player_move.player));
                         } else {
                             let error_message = format!("Invalid Move: {:}", player_move.position);
@@ -364,16 +363,16 @@ impl Board {
             }
             // Check game ended
             if let Some(winner) = self.game_winner() {
-                return Ok(BoardState::Ended(Some(winner)));
+                Ok(BoardState::Ended(Some(winner)))
             } else {
                 if self.get_number_of_open_slots() == 0 {
                     println!("Open slots: {}", self.get_number_of_open_slots());
                     return Ok(BoardState::Ended(None));
                 }
-                return Ok(BoardState::Ongoing);
+                Ok(BoardState::Ongoing)
             }
         } else {
-            return Err("Invalid move.".to_string());
+            Err("Invalid move.".to_string())
         }
     }
 }

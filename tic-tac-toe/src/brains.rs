@@ -21,22 +21,14 @@ impl TicTacToeBrain for BrainLevelOne {
             }
         }
 
-        if empty_positions.len() < 1 {
+        if empty_positions.is_empty() {
             return Err("No available positions for AI to play. ".to_string());
         }
         let position = rand::thread_rng().gen_range(0..empty_positions.len());
         let chosen_position = empty_positions[position];
         // Should I give the Brain it's own Player when initialized or
         // use Board::get_next_player()
-        let player_move = match Move::create(chosen_position, board.get_next_player()) {
-            Ok(player_move) => {
-                Ok(player_move)
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
 
-        return player_move
+        Move::create(chosen_position, board.get_next_player())
     }
 }

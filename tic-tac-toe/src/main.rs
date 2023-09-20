@@ -1,10 +1,10 @@
 use colored::*;
 use std::io;
 mod brains;
-use brains::{TicTacToeBrain, BrainLevelOne};
+use brains::{BrainLevelOne, TicTacToeBrain};
 mod tic_tac_toe;
-use tic_tac_toe::{Board, BoardState, Move, Player, BOARD_SIZE};
 use rand::Rng;
+use tic_tac_toe::{Board, BoardState, Move, Player, BOARD_SIZE};
 enum GameMode {
     AgainstComputer(Player, Box<dyn TicTacToeBrain>),
     AgainstHuman,
@@ -71,7 +71,7 @@ fn ask_for_starting_player() -> Player {
 fn ask_for_move_position(player: &Player) -> Result<usize, &'static str> {
     println!(
         "{}: Select your move ({} a number between {} and {} then press enter)",
-        Player::get_player_char_from_enum(&player),
+        Player::get_player_char_from_enum(player),
         "press".blue(),
         "1".blue(),
         "9".blue()
@@ -90,8 +90,7 @@ fn ask_for_move_position(player: &Player) -> Result<usize, &'static str> {
     Ok(position)
 }
 
-
-fn play_turn(board: &mut Board, game_mode:&GameMode) -> bool {
+fn play_turn(board: &mut Board, game_mode: &GameMode) -> bool {
     println!("Current board: ");
     board.display();
     let player = board.get_next_player();
@@ -101,7 +100,7 @@ fn play_turn(board: &mut Board, game_mode:&GameMode) -> bool {
     match game_mode {
         GameMode::AgainstComputer(computer_player, brain) if player == *computer_player => {
             // Computer player's turn
-            player_move = match brain.make_move(&board) {
+            player_move = match brain.make_move(board) {
                 Ok(player_move) => player_move,
                 Err(err) => {
                     print_error(&err);
@@ -112,7 +111,7 @@ fn play_turn(board: &mut Board, game_mode:&GameMode) -> bool {
         _ => {
             // Human player's turn
             position = match ask_for_move_position(&player) {
-                Ok(num) if num > 0 && num <= BOARD_SIZE.pow(2) as usize => num,
+                Ok(num) if num > 0 && num <= BOARD_SIZE.pow(2) => num,
                 _ => {
                     print_error("Invalid Position selected");
                     return false;
@@ -132,36 +131,31 @@ fn play_turn(board: &mut Board, game_mode:&GameMode) -> bool {
     match board.make_move(player_move) {
         Err(msg) => {
             print_error(format!("An error occurred while making your move.\n{}", msg).as_str());
-            return false;
+            false
         }
-        Ok(state) => {
-            match state {
-                BoardState::Ended(player) => {
-                    match player {
-                        Some(winner) => {
-                            println!(
-                                "{} {} {}",
-                                "Player".green(),
-                                Player::get_player_char_from_enum(&winner)
-                                    .to_string()
-                                    .green(),
-                                "won the game!!".green()
-                            );
-                            board.display();
-                        }
-                        None => println!("Tie Game!"),
+        Ok(state) => match state {
+            BoardState::Ended(player) => {
+                match player {
+                    Some(winner) => {
+                        println!(
+                            "{} {} {}",
+                            "Player".green(),
+                            Player::get_player_char_from_enum(&winner)
+                                .to_string()
+                                .green(),
+                            "won the game!!".green()
+                        );
+                        board.display();
                     }
-                    println!("------------------------------------------------------------");
-                    return true;
+                    None => println!("Tie Game!"),
                 }
-                _ => return false,
+                println!("------------------------------------------------------------");
+                true
             }
-        }
+            _ => false,
+        },
     }
-
-
 }
-
 
 fn main() {
     println!("Tic Tac Toe game");
@@ -171,27 +165,24 @@ fn main() {
     //
     // 2. Ask for Starting Player
 
-
     let player_1 = ask_for_starting_player();
     let game_mode = ask_for_game_mode();
     let mut board = Board::new(player_1);
     let mut game_ended = false;
 
-
     match &game_mode {
         GameMode::AgainstComputer(computer_player, _) => {
             if player_1 == *computer_player {
-                println!("Computer has chosen: {}", Player::get_player_char_from_enum(computer_player));
+                println!(
+                    "Computer has chosen: {}",
+                    Player::get_player_char_from_enum(computer_player)
+                );
             }
         }
-        GameMode::AgainstHuman => {
-
-        }
+        GameMode::AgainstHuman => {}
     }
 
     while !game_ended {
-        
-
         game_ended = play_turn(&mut board, &game_mode);
     }
 }
